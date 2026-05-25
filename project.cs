@@ -558,8 +558,8 @@ class Program
                 a2 = RandomModP();
                 a3 = RandomModP();
                 a4 = RandomModP();
-                start = DateTime.Now;
                 a_array = new UInt128[] { a1, a2, a3, a4 };
+                start = DateTime.Now;
                 skecth = new BCS(l_array[i], a_array, Four_Universal_Hashing);
                 skecth.Process_stream(stream);
                 skecth_2nd_moment = skecth.BCS_2nd_Moment();
