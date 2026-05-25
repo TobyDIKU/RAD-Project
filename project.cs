@@ -308,7 +308,6 @@ class Program
     static void Main()
     {
         int[] size_array = [1000, 10000, 100000, 1000000];
-
         int[] l_array = [12, 14, 14, 16];
 
         IEnumerable<Tuple<ulong, int>> stream;
@@ -316,19 +315,15 @@ class Program
         DateTime start, end;
         TimeSpan MS_time, MMP_time;
         BigInteger MS_sum;
-        BigInteger MMP_sum;
+        BigInteger BigIntegerMMP_sum;
 
         for (int i = 0; i < size_array.Length; i++)
         {
-            // MS_time = TimeSpan.Zero;
-            // MMP_time = TimeSpan.Zero;
-
             MS_sum = BigInteger.Zero;
-            MMP_sum = BigInteger.Zero;
+            BigIntegerMMP_sum = BigInteger.Zero;
 
             stream = CreateStream(size_array[i], l_array[i]);
 
-            //time to hash with multiplyshift
             start = DateTime.Now;
             foreach (var (key, value) in stream)
             {
@@ -337,54 +332,47 @@ class Program
             end = DateTime.Now;
             MS_time = end - start;
 
-            //time to hash with multiply-Mod-Prime
             start = DateTime.Now;
             foreach (var (key, value) in stream)
             {
-                MMP_sum += multiplyModPrime(h2_a, h2_b, l_array[i], key);
+                BigIntegerMMP_sum += multiplyModPrime(h2_a, h2_b, l_array[i], key);
             }
             end = DateTime.Now;
             MMP_time = end - start;
 
-            //output sums and time
             Console.WriteLine($"Size of stream: {size_array[i]}   l size: {l_array[i]}\n");
-            Console.WriteLine($"Muiltiply shift sum: {MS_sum}");
-            Console.WriteLine($"Muiltiply mod prime sum: {MMP_sum}\n");
-            Console.WriteLine($"Muiltiply shift time (ms): {MS_time.TotalMilliseconds}");
-            Console.WriteLine($"Muiltiply mod prime time (ms): {MMP_time.TotalMilliseconds}\n\n");
+            Console.WriteLine($"Multiply shift sum: {MS_sum}");
+            Console.WriteLine($"Multiply mod prime sum: {BigIntegerMMP_sum}\n");
+            Console.WriteLine($"Multiply shift time (ms): {MS_time.TotalMilliseconds}");
+            Console.WriteLine($"Multiply mod prime time (ms): {MMP_time.TotalMilliseconds}\n\n");
         }
 
+        // Opgave 3 arrays
+        int[] opgave3_size_array = [2000000, 2000000, 2000000, 2000000, 2000000];
+        int[] opgave3_l_array = [12, 14, 16, 18, 20];
 
-        //TODO: change these arrays for analysis
-        size_array = [1000, 10000, 100000, 1000000];
-
-        l_array = [12, 14, 14, 16];
-
-        for (int i = 0; i < size_array.Length; i++)
+        // Loopoopsætningen er rettet til at bruge opgave3_size_array.Length
+        for (int i = 0; i < opgave3_size_array.Length; i++)
         {
-            // MS_time = TimeSpan.Zero;
-            // MMP_time = TimeSpan.Zero;
+            stream = CreateStream(opgave3_size_array[i], opgave3_l_array[i]);
 
-            stream = CreateStream(size_array[i], l_array[i]);
-
-            //Squared sum with chained hash table using multiply shift
             start = DateTime.Now;
-            MS_sum = SquareSumStream((x, l) => multiplyShift(h1_a, l, x), l_array[i], stream);
+            // Rettet l_array[i] til opgave3_l_array[i]
+            MS_sum = SquareSumStream((x, lValue) => multiplyShift(h1_a, lValue, x), opgave3_l_array[i], stream);
             end = DateTime.Now;
             MS_time = end - start;
 
-            //Squared sum with chained hash table using multiply mod prime
             start = DateTime.Now;
-            MMP_sum = SquareSumStream((x, l) => multiplyModPrime(h2_a, h2_b, l, x), l_array[i], stream);
+            // Rettet l_array[i] til opgave3_l_array[i]
+            BigIntegerMMP_sum = SquareSumStream((x, lValue) => multiplyModPrime(h2_a, h2_b, lValue, x), opgave3_l_array[i], stream);
             end = DateTime.Now;
             MMP_time = end - start;
 
-            //output squared sums and times.
-            Console.WriteLine($"Size of stream: {size_array[i]}   l size: {l_array[i]}\n");
-            Console.WriteLine($"Muiltiply shift squared sum: {MS_sum}");
-            Console.WriteLine($"Muiltiply mod prime squared sum: {MMP_sum}\n");
-            Console.WriteLine($"Muiltiply shift time squared sum (ms): {MS_time.TotalMilliseconds}");
-            Console.WriteLine($"Muiltiply mod prime squared sum time (ms): {MMP_time.TotalMilliseconds}\n\n");
+            Console.WriteLine($"Size of stream: {opgave3_size_array[i]}   l size: {opgave3_l_array[i]}");
+            Console.WriteLine($"Multiply shift squared sum: {MS_sum}");
+            Console.WriteLine($"Multiply mod prime squared sum: {BigIntegerMMP_sum}");
+            Console.WriteLine($"Multiply shift time (ms): {MS_time.TotalMilliseconds}");
+            Console.WriteLine($"Multiply mod prime time (ms): {MMP_time.TotalMilliseconds}\n");
         }
 
 
@@ -525,6 +513,4 @@ class Program
         }
 
     }
-
 }
-
