@@ -6,6 +6,14 @@ using System.IO;
 using System.Reflection.Emit;
 using System.Runtime.InteropServices.Swift;
 using System.Globalization;
+using System.Diagnostics;
+using System.Xml.Serialization;
+using System.ComponentModel.DataAnnotations.Schema;
+
+//generation of random the random bytes in the 100 experiments
+using System.Security.Cryptography;
+using System.Runtime.Intrinsics.X86;
+using System.Runtime.InteropServices;
 
 //node class for chaining
 public class Node
@@ -109,17 +117,93 @@ public class Chained_hashtable
 
 }
 
+public class BCS
+{
+    private BigInteger[] A;
+    private long[] C_table;
+
+    private Func<BigInteger[], ulong, BigInteger> g;
+
+    int t;
+    private (ulong, int) Compute(int t, Func<BigInteger[], ulong, BigInteger> g, ulong x)
+    {
+        if (t > 64 || t < 0) throw new ArgumentOutOfRangeException(nameof(t));
+        BigInteger f = g(A, x);
+
+        // f mod 2^t
+        ulong h = (ulong)(f & (t == 64 ? ulong.MaxValue : (1UL << t) - 1));
+
+
+        int s = (int)(1 - 2 * (f >> 88));
+        return (h, s);
+    }
+
+    private void Process(ulong x, int val)
+    {
+        (ulong h, int s) = Compute(t, g, x);
+        C_table[h] = C_table[h] + s * val;
+        return;
+    }
+
+    public void Process_stream(IEnumerable<Tuple<ulong, int>> stream)
+    {
+        foreach (var (key, value) in stream)
+        {
+            Process(key, value);
+        }
+        return;
+    }
+
+    public BigInteger BCS_2nd_Moment()
+    {
+        BigInteger sum = BigInteger.Zero;
+        foreach (long num in C_table)
+        {
+            sum += num * num;
+        }
+        return sum;
+    }
+
+    public BCS(int t, BigInteger[] A, Func<BigInteger[], ulong, BigInteger> g)
+    {
+        if (t > 64 || t < 0) throw new ArgumentOutOfRangeException(nameof(t));
+        if (A.Length != 4) throw new ArgumentException("A must be length 4", nameof(A));
+
+        this.g = g;
+        this.t = t;
+        this.A = A;
+        this.C_table = new long[1UL << t];
+    }
+}
+
 class Program
 {
     static ulong h1_a = 0x89661511BDA67731UL; // www.random.org/bytes
     static BigInteger p = (BigInteger.One << 89) - 1; //mersene prime 2^89 - 1
 
+
+    //func for big int mod p
+    static BigInteger ModP(BigInteger y) { y = (y & p) + (y >> 89); return y >= p ? y - p : y; }
+
     //a and b retrival with www.random.org/bytes
     static byte[] h2_abytes = new byte[] { 0x0d, 0x08, 0xa0, 0x18, 0x82, 0xef, 0x8e, 0x56, 0x30, 0x89, 0xea, 0xc0 };
     static byte[] h2_bbytes = new byte[] { 0x91, 0xbb, 0xde, 0x68, 0x2c, 0x6f, 0x6c, 0x60, 0x9d, 0x3d, 0xf3, 0xbf };
-    static BigInteger mask = (BigInteger.One << 89) - 1;
-    static BigInteger h2_a = new BigInteger(h2_abytes, isUnsigned: true) & mask;
-    static BigInteger h2_b = new BigInteger(h2_bbytes, isUnsigned: true) & mask;
+    static BigInteger h2_a = new BigInteger(h2_abytes, isUnsigned: true) & p;
+    static BigInteger h2_b = new BigInteger(h2_bbytes, isUnsigned: true) & p;
+
+    static byte[] h4_a0bytes = new byte[] { 0x65, 0x97, 0xb5, 0x73, 0xb2, 0x91, 0x83, 0x0f, 0x12, 0xc2, 0xa4, 0xdf };
+    static byte[] h4_a1bytes = new byte[] { 0xbc, 0x89, 0x3d, 0xa3, 0x8a, 0x8c, 0xd4, 0x26, 0x98, 0xd0, 0x12, 0xba };
+    static byte[] h4_a2bytes = new byte[] { 0x29, 0xe2, 0xf8, 0xe6, 0xec, 0x4d, 0xde, 0x13, 0xe2, 0x6f, 0x3b, 0x0b };
+    static byte[] h4_a3bytes = new byte[] { 0x0d, 0xdc, 0x76, 0x92, 0x2f, 0x67, 0xa7, 0x88, 0x8e, 0xb0, 0x0f, 0xa9 };
+
+    static BigInteger h4_a0 = ModP(new BigInteger(h4_a0bytes, isUnsigned: true));
+    static BigInteger h4_a1 = ModP(new BigInteger(h4_a1bytes, isUnsigned: true));
+    static BigInteger h4_a2 = ModP(new BigInteger(h4_a2bytes, isUnsigned: true));
+    static BigInteger h4_a3 = ModP(new BigInteger(h4_a3bytes, isUnsigned: true));
+
+    static BigInteger[] h4_A = [h4_a0, h4_a1, h4_a2, h4_a3];
+
+
 
     static ulong multiplyShift(ulong a, int l, ulong x)
     {
@@ -145,6 +229,21 @@ class Program
 
         // mod 2^l  (it is a power of two)
         return (ulong)(y & ((1UL << l) - 1));
+    }
+
+    static BigInteger Four_Universal_Hashing(BigInteger[] A, ulong x)
+    {
+        if (A.Length != 4) throw new ArgumentException("A must be length 4", nameof(A));
+        BigInteger y = A[3];
+        for (int i = 2; i >= 0; i--)
+        {
+            y = y * x + A[i];
+            y = (y & p) + (y >> 89);
+
+        }
+        //find a*X + b mod p
+        if (y >= p) y -= p;
+        return y;
     }
 
 
@@ -190,6 +289,19 @@ class Program
             table.increment(key, value);
         }
         return table.SquareSumOfContents();
+    }
+
+
+    static BigInteger RandomModP()
+    {
+        BigInteger val;
+        do
+        {
+            byte[] bytes = RandomNumberGenerator.GetBytes(12);
+            val = ModP(new BigInteger(bytes, isUnsigned: true));
+        } while (val == 0);
+
+        return val;
     }
 
 
@@ -244,9 +356,9 @@ class Program
 
 
         //TODO: change these arrays for analysis
-        int[] size_array = [1000, 10000, 100000, 1000000];
+        size_array = [1000, 10000, 100000, 1000000];
 
-        int[] l_array = [12, 14, 14, 16];
+        l_array = [12, 14, 14, 16];
 
         for (int i = 0; i < size_array.Length; i++)
         {
@@ -273,6 +385,143 @@ class Program
             Console.WriteLine($"Muiltiply mod prime squared sum: {MMP_sum}\n");
             Console.WriteLine($"Muiltiply shift time squared sum (ms): {MS_time.TotalMilliseconds}");
             Console.WriteLine($"Muiltiply mod prime squared sum time (ms): {MMP_time.TotalMilliseconds}\n\n");
+        }
+
+
+        //100 experiments
+        int l = 16;
+        stream = CreateStream(1000000, l);
+        BigInteger a1, a2, a3, a4;
+        BigInteger skecth_2nd_moment, exact_2nd_moment;
+        exact_2nd_moment = SquareSumStream((x, l) => multiplyModPrime(h2_a, h2_b, l, x), l, stream);
+        BigInteger[] a_array;
+        BCS skecth;
+        BigInteger[] experiments = new BigInteger[100];
+
+        for (int i = 0; i < 100; i++)
+        {
+            a1 = RandomModP();
+            a2 = RandomModP();
+            a3 = RandomModP();
+            a4 = RandomModP();
+            a_array = new BigInteger[] { a1, a2, a3, a4 };
+            skecth = new BCS(l, a_array, Four_Universal_Hashing);
+            skecth.Process_stream(stream);
+            skecth_2nd_moment = skecth.BCS_2nd_Moment();
+            experiments[i] = skecth_2nd_moment;
+        }
+
+
+        // Sort experiments
+        var sorted = experiments.Select(x => x).OrderBy(x => x).ToArray();
+
+        // write to CSV file for analysis
+        using (var writer = new StreamWriter("sorted_ results.csv"))
+        {
+            writer.WriteLine("rank,estimate,exact");
+            for (int i = 0; i < 100; i++)
+            {
+                writer.WriteLine($"{i + 1},{sorted[i]},{exact_2nd_moment}");
+            }
+        }
+
+        // Del i 9 grupper af størrelse 11
+        BigInteger[] medians = new BigInteger[9];
+        for (int i = 0; i < 9; i++)
+        {
+            BigInteger[] group = experiments.Skip(i * 11).Take(11).ToArray();
+            Array.Sort(group);
+            medians[i] = group[5];
+        }
+
+        Array.Sort(medians);
+        using (var writer = new StreamWriter("medians.csv"))
+        {
+            writer.WriteLine("rank,median,exact");
+            for (int i = 0; i < 9; i++)
+            {
+                writer.WriteLine($"{i + 1},{medians[i]},{exact_2nd_moment}");
+            }
+        }
+
+
+        (BigInteger, TimeSpan)[][] experiments_matrix = new (BigInteger, TimeSpan)[3][];
+        BigInteger[][] medians_matrix = new BigInteger[3][];
+        for (int i = 0; i < 3; i++)
+        {
+            experiments_matrix[i] = new (BigInteger, TimeSpan)[100];
+            medians_matrix[i] = new BigInteger[9];
+        }
+
+        //differing l sizes
+        l_array = [12, 14, 18];
+
+
+        //doing experiments for each m = (2^l) size
+        for (int i = 0; i < 3; i++)
+        {
+            for (int j = 0; j < 100; j++)
+            {
+                a1 = RandomModP();
+                a2 = RandomModP();
+                a3 = RandomModP();
+                a4 = RandomModP();
+                start = DateTime.Now;
+                a_array = new BigInteger[] { a1, a2, a3, a4 };
+                skecth = new BCS(l_array[i], a_array, Four_Universal_Hashing);
+                skecth.Process_stream(stream);
+                skecth_2nd_moment = skecth.BCS_2nd_Moment();
+                end = DateTime.Now;
+                experiments_matrix[i][j] = (skecth_2nd_moment, end - start);
+            }
+        }
+
+        //finding sorted version for each m size 
+        (BigInteger, TimeSpan)[][] sorted_matrix = new (BigInteger, TimeSpan)[3][];
+        for (int i = 0; i < 3; i++)
+        {
+            sorted_matrix[i] = experiments_matrix[i].Select(x => x).OrderBy(x => x.Item1).ToArray();
+        }
+
+        //writing to csv sorted matrix csv file
+        using (var writer = new StreamWriter("sorted_matrix.csv"))
+        {
+            writer.WriteLine("rank,estimate,exact,l,time");
+            for (int i = 0; i < 3; i++)
+            {
+                for (int j = 0; j < 100; j++)
+                {
+                    writer.WriteLine($"{j + 1},{sorted_matrix[i][j].Item1},{exact_2nd_moment},{l_array[i]},{sorted_matrix[i][j].Item2.TotalMilliseconds.ToString(System.Globalization.CultureInfo.InvariantCulture)}");
+                }
+            }
+        }
+
+
+        //finding median values for the experiments for each m size
+        for (int i = 0; i < 3; i++)
+        {
+            for (int j = 0; j < 9; j++)
+            {
+                BigInteger[] group = experiments_matrix[i].Skip(j * 11).Take(11).Select(x => x.Item1).ToArray();
+                Array.Sort(group);
+                medians_matrix[i][j] = group[5];
+            }
+
+            Array.Sort(medians_matrix[i]);
+        }
+
+
+        //writing to csv median matrix csv file
+        using (var writer = new StreamWriter("medians_matrix.csv"))
+        {
+            writer.WriteLine("rank,median,exact,l");
+            for (int i = 0; i < 3; i++)
+            {
+                for (int j = 0; j < 9; j++)
+                {
+                    writer.WriteLine($"{j + 1},{medians_matrix[i][j]},{exact_2nd_moment},{l_array[i]}");
+                }
+            }
         }
 
     }
