@@ -90,16 +90,16 @@ public class Chained_hashtable
         return;
     }
 
-    public BigInteger SquareSumOfContents()
+    public UInt128 SquareSumOfContents()
     {
         Node curr;
-        BigInteger sum = BigInteger.Zero;
+        UInt128 sum = UInt128.Zero;
         foreach (Node head in table)
         {
             curr = head;
             while (curr != null)
             {
-                sum += (BigInteger)curr.Val * curr.Val;
+                sum += (UInt128)(curr.Val * curr.Val);
                 curr = curr.Next;
             }
         }
@@ -119,16 +119,16 @@ public class Chained_hashtable
 
 public class BCS
 {
-    private BigInteger[] A;
+    private UInt128[] A;
     private long[] C_table;
 
-    private Func<BigInteger[], ulong, BigInteger> g;
+    private Func<UInt128[], ulong, UInt128> g;
 
     int t;
-    private (ulong, int) Compute(int t, Func<BigInteger[], ulong, BigInteger> g, ulong x)
+    private (ulong, int) Compute(int t, Func<UInt128[], ulong, UInt128> g, ulong x)
     {
         if (t > 64 || t < 0) throw new ArgumentOutOfRangeException(nameof(t));
-        BigInteger f = g(A, x);
+        UInt128 f = g(A, x);
 
         // f mod 2^t
         ulong h = (ulong)(f & (t == 64 ? ulong.MaxValue : (1UL << t) - 1));
@@ -154,17 +154,17 @@ public class BCS
         return;
     }
 
-    public BigInteger BCS_2nd_Moment()
+    public UInt128 BCS_2nd_Moment()
     {
-        BigInteger sum = BigInteger.Zero;
+        UInt128 sum = UInt128.Zero;
         foreach (long num in C_table)
         {
-            sum += num * num;
+            sum += (UInt128)(num * num);
         }
         return sum;
     }
 
-    public BCS(int t, BigInteger[] A, Func<BigInteger[], ulong, BigInteger> g)
+    public BCS(int t, UInt128[] A, Func<UInt128[], ulong, UInt128> g)
     {
         if (t > 64 || t < 0) throw new ArgumentOutOfRangeException(nameof(t));
         if (A.Length != 4) throw new ArgumentException("A must be length 4", nameof(A));
@@ -179,29 +179,45 @@ public class BCS
 class Program
 {
     static ulong h1_a = 0x89661511BDA67731UL; // www.random.org/bytes
-    static BigInteger p = (BigInteger.One << 89) - 1; //mersene prime 2^89 - 1
+    static UInt128 p = (UInt128.One << 89) - 1; //mersene prime 2^89 - 1
 
 
-    //func for big int mod p
-    static BigInteger ModP(BigInteger y) { y = (y & p) + (y >> 89); return y >= p ? y - p : y; }
+    //func for uintint mod p
+    static UInt128 ModP(UInt128 y) { y = (y & p) + (y >> 89); return y >= p ? y - p : y; }
+
+
+    //func for converting byte arrays
+    static UInt128 BytesToUInt128(byte[] bytes)
+    {
+        UInt128 result = 0;
+
+        for (int i = 0; i < bytes.Length; i++)
+        {
+            result |= (UInt128)bytes[i] << (8 * i);
+        }
+
+        return result;
+    }
 
     //a and b retrival with www.random.org/bytes
     static byte[] h2_abytes = new byte[] { 0x0d, 0x08, 0xa0, 0x18, 0x82, 0xef, 0x8e, 0x56, 0x30, 0x89, 0xea, 0xc0 };
     static byte[] h2_bbytes = new byte[] { 0x91, 0xbb, 0xde, 0x68, 0x2c, 0x6f, 0x6c, 0x60, 0x9d, 0x3d, 0xf3, 0xbf };
-    static BigInteger h2_a = new BigInteger(h2_abytes, isUnsigned: true) & p;
-    static BigInteger h2_b = new BigInteger(h2_bbytes, isUnsigned: true) & p;
+    static UInt128 h2_a = ModP(BytesToUInt128(h2_abytes));
+    static UInt128 h2_b = ModP(BytesToUInt128(h2_bbytes));
 
     static byte[] h4_a0bytes = new byte[] { 0x65, 0x97, 0xb5, 0x73, 0xb2, 0x91, 0x83, 0x0f, 0x12, 0xc2, 0xa4, 0xdf };
     static byte[] h4_a1bytes = new byte[] { 0xbc, 0x89, 0x3d, 0xa3, 0x8a, 0x8c, 0xd4, 0x26, 0x98, 0xd0, 0x12, 0xba };
     static byte[] h4_a2bytes = new byte[] { 0x29, 0xe2, 0xf8, 0xe6, 0xec, 0x4d, 0xde, 0x13, 0xe2, 0x6f, 0x3b, 0x0b };
     static byte[] h4_a3bytes = new byte[] { 0x0d, 0xdc, 0x76, 0x92, 0x2f, 0x67, 0xa7, 0x88, 0x8e, 0xb0, 0x0f, 0xa9 };
 
-    static BigInteger h4_a0 = ModP(new BigInteger(h4_a0bytes, isUnsigned: true));
-    static BigInteger h4_a1 = ModP(new BigInteger(h4_a1bytes, isUnsigned: true));
-    static BigInteger h4_a2 = ModP(new BigInteger(h4_a2bytes, isUnsigned: true));
-    static BigInteger h4_a3 = ModP(new BigInteger(h4_a3bytes, isUnsigned: true));
+    static UInt128 h4_a0 = ModP(BytesToUInt128(h4_a0bytes));
+    static UInt128 h4_a1 = ModP(BytesToUInt128(h4_a1bytes));
+    static UInt128 h4_a2 = ModP(BytesToUInt128(h4_a2bytes));
+    static UInt128 h4_a3 = ModP(BytesToUInt128(h4_a3bytes));
 
-    static BigInteger[] h4_A = [h4_a0, h4_a1, h4_a2, h4_a3];
+    static ulong MASK25 = (1UL << 25) - 1;
+
+    static UInt128[] h4_A = [h4_a0, h4_a1, h4_a2, h4_a3];
 
 
 
@@ -219,31 +235,119 @@ class Program
         return (a * x) >> (64 - l);
     }
 
-    static ulong multiplyModPrime(BigInteger a, BigInteger b, int l, ulong x)
+    static ulong multiplyModPrime(UInt128 a, UInt128 b, int l, ulong x)
     {
-        BigInteger y = a * x + b;
+        const ulong MASK25 = (1UL << 25) - 1;
 
-        //find a*X + b mod p
+        // split a
+        ulong a_lo = (ulong)a;
+        ulong a_hi = (ulong)(a >> 64);
+
+        // split b
+        ulong b_lo = (ulong)b;
+        ulong b_hi = (ulong)(b >> 64);
+
+        // a*x
+        UInt128 p0 = (UInt128)a_lo * x;
+        UInt128 p1 = (UInt128)a_hi * x;
+
+        // 153-bit accumulator
+        ulong z0 = (ulong)p0;
+
+        ulong z1 =
+            (ulong)(p0 >> 64) +
+            (ulong)p1;
+
+        ulong z2 =
+            (ulong)(p1 >> 64);
+
+        // + b
+        ulong old = z0;
+        z0 += b_lo;
+
+        ulong carry = (z0 < old) ? 1UL : 0UL;
+
+        z1 += b_hi + carry;
+
+        if (z1 < b_hi + carry)
+            z2++;
+
+        // reduction mod 2^89-1
+        UInt128 low =
+            (UInt128)z0 |
+            ((UInt128)(z1 & MASK25) << 64);
+
+        UInt128 high =
+            (UInt128)(z1 >> 25) |
+            ((UInt128)z2 << 39);
+
+        UInt128 y = low + high;
+
         y = (y & p) + (y >> 89);
-        if (y >= p) y -= p;
 
-        // mod 2^l  (it is a power of two)
-        return (ulong)(y & ((1UL << l) - 1));
+        if (y >= p)
+            y -= p;
+
+        return (ulong)y & ((1UL << l) - 1);
     }
 
-    static BigInteger Four_Universal_Hashing(BigInteger[] A, ulong x)
+    static UInt128 Four_Universal_Hashing(UInt128[] A, ulong x)
     {
-        if (A.Length != 4) throw new ArgumentException("A must be length 4", nameof(A));
-        BigInteger y = A[3];
+        if (A.Length != 4) { throw new ArgumentException("A must be length 4", nameof(A)); }
+        ulong y_lo = (ulong)A[3];
+        ulong y_hi = (ulong)(A[3] >> 64);
         for (int i = 2; i >= 0; i--)
         {
-            y = y * x + A[i];
+            ulong a_lo = (ulong)A[i];
+            ulong a_hi = (ulong)(A[i] >> 64);
+
+            // y*x
+            UInt128 p0 = (UInt128)y_lo * x;
+            UInt128 p1 = (UInt128)y_hi * x;
+
+            ulong z0 = (ulong)p0;
+
+            ulong z1 =
+                (ulong)(p0 >> 64) +
+                (ulong)p1;
+
+            ulong z2 =
+                (ulong)(p1 >> 64);
+
+            // + coefficient
+            ulong old = z0;
+            z0 += a_lo;
+
+            ulong carry = (z0 < old) ? 1UL : 0UL;
+
+            z1 += a_hi + carry;
+
+            if (z1 < a_hi + carry)
+                z2++;
+
+            // reduction mod 2^89-1
+            UInt128 low =
+                (UInt128)z0 |
+                ((UInt128)(z1 & MASK25) << 64);
+
+            UInt128 high =
+                (UInt128)(z1 >> 25) |
+                ((UInt128)z2 << 39);
+
+            UInt128 y = low + high;
+
             y = (y & p) + (y >> 89);
 
+            if (y >= p)
+                y -= p;
+
+            y_lo = (ulong)y;
+            y_hi = (ulong)(y >> 64);
+
         }
-        //find a*X + b mod p
-        if (y >= p) y -= p;
-        return y;
+        return
+        (UInt128)y_lo |
+        ((UInt128)y_hi << 64);
     }
 
 
@@ -281,7 +385,7 @@ class Program
     }
 
 
-    static BigInteger SquareSumStream(Func<ulong, int, ulong> h, int l, IEnumerable<Tuple<ulong, int>> stream)
+    static UInt128 SquareSumStream(Func<ulong, int, ulong> h, int l, IEnumerable<Tuple<ulong, int>> stream)
     {
         Chained_hashtable table = new Chained_hashtable(h, l);
         foreach (var (key, value) in stream)
@@ -292,13 +396,13 @@ class Program
     }
 
 
-    static BigInteger RandomModP()
+    static UInt128 RandomModP()
     {
-        BigInteger val;
+        UInt128 val;
         do
         {
             byte[] bytes = RandomNumberGenerator.GetBytes(12);
-            val = ModP(new BigInteger(bytes, isUnsigned: true));
+            val = ModP(BytesToUInt128(bytes));
         } while (val == 0);
 
         return val;
@@ -314,13 +418,13 @@ class Program
 
         DateTime start, end;
         TimeSpan MS_time, MMP_time;
-        BigInteger MS_sum;
-        BigInteger BigIntegerMMP_sum;
+        UInt128 MS_sum;
+        UInt128 MMP_sum;
 
         for (int i = 0; i < size_array.Length; i++)
         {
-            MS_sum = BigInteger.Zero;
-            BigIntegerMMP_sum = BigInteger.Zero;
+            MS_sum = UInt128.Zero;
+            MMP_sum = UInt128.Zero;
 
             stream = CreateStream(size_array[i], l_array[i]);
 
@@ -335,14 +439,14 @@ class Program
             start = DateTime.Now;
             foreach (var (key, value) in stream)
             {
-                BigIntegerMMP_sum += multiplyModPrime(h2_a, h2_b, l_array[i], key);
+                MMP_sum += multiplyModPrime(h2_a, h2_b, l_array[i], key);
             }
             end = DateTime.Now;
             MMP_time = end - start;
 
             Console.WriteLine($"Size of stream: {size_array[i]}   l size: {l_array[i]}\n");
             Console.WriteLine($"Multiply shift sum: {MS_sum}");
-            Console.WriteLine($"Multiply mod prime sum: {BigIntegerMMP_sum}\n");
+            Console.WriteLine($"Multiply mod prime sum: {MMP_sum}\n");
             Console.WriteLine($"Multiply shift time (ms): {MS_time.TotalMilliseconds}");
             Console.WriteLine($"Multiply mod prime time (ms): {MMP_time.TotalMilliseconds}\n\n");
         }
@@ -364,13 +468,13 @@ class Program
 
             start = DateTime.Now;
             // Rettet l_array[i] til opgave3_l_array[i]
-            BigIntegerMMP_sum = SquareSumStream((x, lValue) => multiplyModPrime(h2_a, h2_b, lValue, x), opgave3_l_array[i], stream);
+            MMP_sum = SquareSumStream((x, lValue) => multiplyModPrime(h2_a, h2_b, lValue, x), opgave3_l_array[i], stream);
             end = DateTime.Now;
             MMP_time = end - start;
 
             Console.WriteLine($"Size of stream: {opgave3_size_array[i]}   l size: {opgave3_l_array[i]}");
             Console.WriteLine($"Multiply shift squared sum: {MS_sum}");
-            Console.WriteLine($"Multiply mod prime squared sum: {BigIntegerMMP_sum}");
+            Console.WriteLine($"Multiply mod prime squared sum: {MMP_sum}");
             Console.WriteLine($"Multiply shift time (ms): {MS_time.TotalMilliseconds}");
             Console.WriteLine($"Multiply mod prime time (ms): {MMP_time.TotalMilliseconds}\n");
         }
@@ -379,12 +483,12 @@ class Program
         //100 experiments
         int l = 16;
         stream = CreateStream(1000000, l);
-        BigInteger a1, a2, a3, a4;
-        BigInteger skecth_2nd_moment, exact_2nd_moment;
+        UInt128 a1, a2, a3, a4;
+        UInt128 skecth_2nd_moment, exact_2nd_moment;
         exact_2nd_moment = SquareSumStream((x, l) => multiplyModPrime(h2_a, h2_b, l, x), l, stream);
-        BigInteger[] a_array;
+        UInt128[] a_array;
         BCS skecth;
-        BigInteger[] experiments = new BigInteger[100];
+        UInt128[] experiments = new UInt128[100];
 
         for (int i = 0; i < 100; i++)
         {
@@ -392,7 +496,7 @@ class Program
             a2 = RandomModP();
             a3 = RandomModP();
             a4 = RandomModP();
-            a_array = new BigInteger[] { a1, a2, a3, a4 };
+            a_array = new UInt128[] { a1, a2, a3, a4 };
             skecth = new BCS(l, a_array, Four_Universal_Hashing);
             skecth.Process_stream(stream);
             skecth_2nd_moment = skecth.BCS_2nd_Moment();
@@ -414,10 +518,10 @@ class Program
         }
 
         // Del i 9 grupper af størrelse 11
-        BigInteger[] medians = new BigInteger[9];
+        UInt128[] medians = new UInt128[9];
         for (int i = 0; i < 9; i++)
         {
-            BigInteger[] group = experiments.Skip(i * 11).Take(11).ToArray();
+            UInt128[] group = experiments.Skip(i * 11).Take(11).ToArray();
             Array.Sort(group);
             medians[i] = group[5];
         }
@@ -433,12 +537,12 @@ class Program
         }
 
 
-        (BigInteger, TimeSpan)[][] experiments_matrix = new (BigInteger, TimeSpan)[3][];
-        BigInteger[][] medians_matrix = new BigInteger[3][];
+        (UInt128, TimeSpan)[][] experiments_matrix = new (UInt128, TimeSpan)[3][];
+        UInt128[][] medians_matrix = new UInt128[3][];
         for (int i = 0; i < 3; i++)
         {
-            experiments_matrix[i] = new (BigInteger, TimeSpan)[100];
-            medians_matrix[i] = new BigInteger[9];
+            experiments_matrix[i] = new (UInt128, TimeSpan)[100];
+            medians_matrix[i] = new UInt128[9];
         }
 
         //differing l sizes
@@ -455,7 +559,7 @@ class Program
                 a3 = RandomModP();
                 a4 = RandomModP();
                 start = DateTime.Now;
-                a_array = new BigInteger[] { a1, a2, a3, a4 };
+                a_array = new UInt128[] { a1, a2, a3, a4 };
                 skecth = new BCS(l_array[i], a_array, Four_Universal_Hashing);
                 skecth.Process_stream(stream);
                 skecth_2nd_moment = skecth.BCS_2nd_Moment();
@@ -465,7 +569,7 @@ class Program
         }
 
         //finding sorted version for each m size 
-        (BigInteger, TimeSpan)[][] sorted_matrix = new (BigInteger, TimeSpan)[3][];
+        (UInt128, TimeSpan)[][] sorted_matrix = new (UInt128, TimeSpan)[3][];
         for (int i = 0; i < 3; i++)
         {
             sorted_matrix[i] = experiments_matrix[i].Select(x => x).OrderBy(x => x.Item1).ToArray();
@@ -490,7 +594,7 @@ class Program
         {
             for (int j = 0; j < 9; j++)
             {
-                BigInteger[] group = experiments_matrix[i].Skip(j * 11).Take(11).Select(x => x.Item1).ToArray();
+                UInt128[] group = experiments_matrix[i].Skip(j * 11).Take(11).Select(x => x.Item1).ToArray();
                 Array.Sort(group);
                 medians_matrix[i][j] = group[5];
             }
