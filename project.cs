@@ -18,41 +18,44 @@ using System.Runtime.InteropServices;
 //node class for chaining
 public class Node
 {
-    public long Val { get; set; }
-    public ulong Key { get; set; }
-    public Node Next { get; set; } = null;
+    public long Val { get; set; }           //the value of the node
+    public ulong Key { get; set; }          //the key of the node
+    public Node Next { get; set; } = null;  //pointer to the next node in the chain
 
-    public Node(ulong key, int val)
+    public Node(ulong key, int val)         //constructor for the node
     {
-        Val = val;
-        Key = key;
+        Val = val;                          
+        Key = key;                         
     }
 }
 
 //hashtable with chaining
 public class Chained_hashtable
 {
-    public readonly int l;
-    private Node[] table;
+    public readonly int l;                          //the number of bits for the hash function
+    private Node[] table;                           //the table of nodes    
 
-    private Func<ulong, int, ulong> h;
+    private Func<ulong, int, ulong> h;              //the hash function
 
-    public long get(ulong x)
+
+    //get the value of a key in the hashtable, return 0 if not found
+    public long get(ulong x)                        
     {
-        Node curr = this.table[this.h(x, this.l)];
+        Node curr = this.table[this.h(x, this.l)];  //get the head of the chain for the key x
         while (curr is not null)
         {
-            if (curr.Key == x) return curr.Val;
+            if (curr.Key == x) return curr.Val;     
             curr = curr.Next;
         }
         return 0;
     }
 
-    public void set(ulong x, int v)
+    //set the value of a key in the hashtable, if the key is not found, add a new node to the chain
+    public void set(ulong x, int v)                 
     {
-        ulong index = this.h(x, this.l);
-        Node head = this.table[index];
-        Node curr = head;
+        ulong index = this.h(x, this.l);            //get the index for the key x
+        Node head = this.table[index];              //get the head of the chain for the key x
+        Node curr = head;                           //set the current node to the head of the chain
         while (curr is not null)
         {
             if (curr.Key == x)
@@ -63,15 +66,16 @@ public class Chained_hashtable
             curr = curr.Next;
         }
 
-        Node newNode = new Node(x, v);
-        newNode.Next = head;
-        this.table[index] = newNode;
+        Node newNode = new Node(x, v);              //create a new node with the key x and value v
+        newNode.Next = head;                        //set the next pointer of the new node to the head of the chain
+        this.table[index] = newNode;                //set the head of the chain to the new node
         return;
     }
 
+    //increment the value of a key in the hashtable by d, if the key is not found, add a new node to the chain with value d
     public void increment(ulong x, int d)
     {
-        ulong index = this.h(x, this.l);
+        ulong index = this.h(x, this.l);        
         Node head = this.table[index];
         Node curr = head;
         while (curr is not null)
@@ -90,10 +94,12 @@ public class Chained_hashtable
         return;
     }
 
+
+    //calculate the square sum of the values in the hashtable, by iterating through all the chains and summing the squares of the values
     public long SquareSumOfContents()
     {
-        Node curr;
-        long sum = 0L;
+        Node curr;                              
+        long sum = 0L;                          
         foreach (Node head in table)
         {
             curr = head;
@@ -106,37 +112,42 @@ public class Chained_hashtable
         return sum;
     }
 
+    //constructor for the hashtable
     public Chained_hashtable(Func<ulong, int, ulong> h, int l)
     {
         this.l = l;
         this.h = h;
         //make table of size min of 2^l or 2^20
-        int power = Math.Min(20, l);
-        this.table = new Node[1 << l];
+        int power = Math.Min(20, l);                
+        this.table = new Node[1 << l];              
     }
 
 }
 
+//BCS sketch class
 public class BCS
 {
-    private BigInteger[] A;
-    private long[] C_table;
+    private BigInteger[] A;                             //the array of random variables for the hash function
+    private long[] C_table;                             //the table of counts for the hash function
 
-    private Func<BigInteger[], ulong, BigInteger> g;
+    private Func<BigInteger[], ulong, BigInteger> g;    //the hash function
 
     int t;
-    private (ulong, int) Compute(int t, Func<BigInteger[], ulong, BigInteger> g, ulong x)
+
+    //compute the hash value and the sign for a given key x
+    private (ulong, int) Compute(int t, Func<BigInteger[], ulong, BigInteger> g, ulong x)   
     {
-        if (t > 64 || t < 0) throw new ArgumentOutOfRangeException(nameof(t));
-        BigInteger f = g(A, x);
+        if (t > 64 || t < 0) throw new ArgumentOutOfRangeException(nameof(t));  //check that t is between 0 and 64
+        BigInteger f = g(A, x);     //compute the hash value using the hash function g and the array of random variables A
 
-        // f mod 2^t
-        ulong h = (ulong)(f & (t == 64 ? ulong.MaxValue : (1UL << t) - 1));
+        
+        ulong h = (ulong)(f & (t == 64 ? ulong.MaxValue : (1UL << t) - 1));  //f mod 2^t
 
-        int s = (int)(1 - 2 * (f >> 88));
-        return (h, s);
+        int s = (int)(1 - 2 * (f >> 88));                                    //determine the sign
+        return (h, s);                                                       //return the hash value and the sign
     }
 
+    //process key x with value val, by computing the hash value and the sign for the key x and updating the count in the table Ctable
     private void Process(ulong x, int val)
     {
         (ulong h, int s) = Compute(t, g, x);
@@ -144,6 +155,7 @@ public class BCS
         return;
     }
 
+    //process a stream of key-value pairs by calling the Process function for each key-value pair in the stream 
     public void Process_stream(IEnumerable<Tuple<ulong, int>> stream)
     {
         foreach (var (key, value) in stream)
@@ -153,6 +165,7 @@ public class BCS
         return;
     }
 
+    //calculate the 2nd moment of the count table by summing the squares of the counts in the table C_table
     public ulong BCS_2nd_Moment()
     {
         long sum = 0L;
@@ -163,15 +176,16 @@ public class BCS
         return (ulong)sum;
     }
 
+    //constructor for the BCS sketch class
     public BCS(int t, BigInteger[] A, Func<BigInteger[], ulong, BigInteger> g)
     {
-        if (t > 64 || t < 0) throw new ArgumentOutOfRangeException(nameof(t));
-        if (A.Length != 4) throw new ArgumentException("A must be length 4", nameof(A));
+        if (t > 64 || t < 0) throw new ArgumentOutOfRangeException(nameof(t));          //check that t is between 0 and 64
+        if (A.Length != 4) throw new ArgumentException("A must be length 4", nameof(A)); //check that A is of length 4
 
         this.g = g;
         this.t = t;
         this.A = A;
-        this.C_table = new long[1UL << t];
+        this.C_table = new long[1UL << t];  //initialize the count table to be of size 2^t
     }
 }
 
@@ -210,7 +224,7 @@ class Program
     static BigInteger[] h4_A = [h4_a0, h4_a1, h4_a2, h4_a3];
 
 
-
+    //func for multiply shift, which multiplies a by x and then shifts the result to the right by (64 - l) bits
     static ulong multiplyShift(ulong a, int l, ulong x)
     {
         if (l <= 0 || l >= 64)
@@ -225,6 +239,7 @@ class Program
         return (a * x) >> (64 - l);
     }
 
+    //func for multiply mod prime, which multiplies a by x and adds b, then takes the result mod p and returns the least significant l bits of the result
     static ulong multiplyModPrime(BigInteger a, BigInteger b, int l, ulong x)
     {
         if (l < 0 || l > 63)
@@ -235,22 +250,23 @@ class Program
         return (ulong)(y & ((1UL << l) - 1));
     }
 
+    //func for 4-universal 
     static BigInteger Four_Universal_Hashing(BigInteger[] A, ulong x)
     {
-        if (A.Length != 4) throw new ArgumentException("A must be length 4", nameof(A));
-        BigInteger y = A[3];
-        for (int i = 2; i >= 0; i--)
+        if (A.Length != 4) throw new ArgumentException("A must be length 4", nameof(A)); //check that A is of length 4
+        BigInteger y = A[3];                //start with the last element of A
+        for (int i = 2; i >= 0; i--)        
         {
-            y = y * x + A[i];
-            y = (y & p) + (y >> 89);
+            y = y * x + A[i];               
+            y = (y & p) + (y >> 89);        //mod p
 
         }
         if (y >= p) y -= p;
-        return y;
+        return y;                           
     }
 
 
-
+    //func for creating the stream of keyvalue pairs 
     static IEnumerable<Tuple<ulong, int>> CreateStream(int n, int l)
     {
         // We generate a random uint64 number .
@@ -283,7 +299,7 @@ class Program
         }
     }
 
-
+    //func for calculating the square sum of the values in the hashtable for a given stream of keyvalue pairs. 
     static ulong SquareSumStream(Func<ulong, int, ulong> h, int l, IEnumerable<Tuple<ulong, int>> stream)
     {
         Chained_hashtable table = new Chained_hashtable(h, l);
@@ -309,7 +325,7 @@ class Program
         return val;
     }
 
-
+    //main function for running the experiments and writing the results 
     static void Main()
     {
         //task c arrays
@@ -319,14 +335,14 @@ class Program
         //declare variables
         IEnumerable<Tuple<ulong, int>> stream;
 
-        DateTime start, end;
-        TimeSpan MS_time, MMP_time;
-        UInt128 MS_sum;
-        UInt128 MMP_sum;
-        TimeSpan[][] times = new TimeSpan[2][];
+        DateTime start, end;           //variables for measuring time
+        TimeSpan MS_time, MMP_time;    //variables for storing time results
+        UInt128 MS_sum;                //variables for storing sum results
+        UInt128 MMP_sum;               //variables for storing sum results
+        TimeSpan[][] times = new TimeSpan[2][]; //array for storing time results
         for (int i = 0; i < 2; i++)
         {
-            times[i] = new TimeSpan[5];
+            times[i] = new TimeSpan[5];     //initialize the times array to store the time results for each experiment
         }
 
         for (int i = 0; i < size_array.Length; i++)
@@ -381,7 +397,7 @@ class Program
         int[] opgave3_size_array = [2000000, 2000000, 2000000, 2000000, 2000000];
         int[] opgave3_l_array = [12, 14, 16, 18, 20];
 
-        // Loopoopsætningen er rettet til at bruge opgave3_size_array.Length
+        //reset variables for task c
         for (int i = 0; i < opgave3_size_array.Length; i++)
         {
             stream = CreateStream(opgave3_size_array[i], opgave3_l_array[i]);
