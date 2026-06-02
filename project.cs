@@ -111,7 +111,7 @@ public class Chained_hashtable
         this.l = l;
         this.h = h;
         //make table of size min of 2^l or 2^20
-        int power = Math.Min(20, l);
+        int power = l;
         this.table = new Node[1 << l];
     }
 
@@ -428,7 +428,10 @@ class Program
         stream = CreateStream(1000000, l);
         BigInteger a1, a2, a3, a4;
         ulong skecth_2nd_moment, exact_2nd_moment;
+        start = DateTime.Now;
         exact_2nd_moment = SquareSumStream((x, l) => multiplyModPrime(h2_a, h2_b, l, x), l, stream);
+        end = DateTime.Now;
+        Console.WriteLine($"Exact 2nd moment time: {(end - start).TotalMilliseconds}");
         BigInteger[] a_array;
         BCS skecth;
         ulong[] experiments = new ulong[100];
@@ -489,12 +492,17 @@ class Program
         }
 
         //differing l sizes
-        l_array = [12, 14, 18];
-
+        l_array = [8, 14, 18];
+        ulong moment_at_l;
 
         //doing experiments for each m = (2^l) size
         for (int i = 0; i < 3; i++)
         {
+            start = DateTime.Now;
+            //we dont use it, we simply call with different l to see times
+            moment_at_l = SquareSumStream((x, l) => multiplyModPrime(h2_a, h2_b, l_array[i], x), l_array[i], stream);
+            end = DateTime.Now;
+            Console.WriteLine($"Exact 2nd moment time (l = {l_array[i]}): {(end - start).TotalMilliseconds}");
             for (int j = 0; j < 100; j++)
             {
                 a1 = RandomModP();
